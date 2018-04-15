@@ -1,6 +1,4 @@
 import org.apache.commons.io.FileUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,8 +21,12 @@ public class MainClass {
             return;
         }
 
+        // https://www.myfxbook.com/statements/2401713/statement.csv
+        // https://www.myfxbook.com/members/dmitriy127/si14-arbitrage-1/2401713
+
         // reading input arguments
-        URL url = new URL(args[0]);
+        String address = args[0];
+        URL url = new URL(address);
         if (args.length >= 2 && args[1] != null) {
             connectionTimeout = Integer.parseInt(args[1]) * 1000;
         }
@@ -32,15 +34,38 @@ public class MainClass {
             readTimeout = Integer.parseInt(args[2]) * 1000;
         }
 
-        Document doc;
-        String title;
+        String accountId = getAccountId(url);
+        if (accountId == null) {
+            System.out.println("Unknown Account ID");
+            return;
+        }
 
-        doc = Jsoup.connect(url.toString()).get();
-        title = doc.title();
-        System.out.println("Jsoup Can read HTML page from URL, title : " + title);
+        String statementUrl = "https://www.myfxbook.com/statements/" + accountId + "/statement.csv";
+        System.out.println("Downloading: " + statementUrl);
+
+        URL downloadUrl = new URL(statementUrl);
+        String savedFile = downloadFile(downloadUrl, accountId + ".csv");
+        if (savedFile != null) {
+            System.out.println("Success!");
+        }
     }
 
-    public String downloadPage(URL url, String toFile) {
+    private static String getAccountId(URL url) {
+        if (url.getPath().contains("/statements")) {
+            String[] arr = url.getPath().split("/");
+            if (arr.length >= 3) {
+                return arr[2];
+            }
+        } else if (url.getPath().contains("/members")) {
+            String[] arr = url.getPath().split("/");
+            if (arr.length >= 5) {
+                return arr[4];
+            }
+        }
+        return null;
+    }
+
+    public static String downloadFile(URL url, String toFile) {
         try {
             FileUtils.copyURLToFile(url, new File(toFile), connectionTimeout, readTimeout);
         } catch (IOException e) {
@@ -50,7 +75,7 @@ public class MainClass {
         return toFile;
     }
 
-    public String downloadNio(URL url, String toFile) {
+    public static String downloadFileNio(URL url, String toFile) {
         try (FileOutputStream fos = new FileOutputStream(toFile);
              ReadableByteChannel rbc = Channels.newChannel(url.openStream())) {
 
